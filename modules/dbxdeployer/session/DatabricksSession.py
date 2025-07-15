@@ -1,6 +1,9 @@
+import hashlib
+import time
 import structlog
 import requests
 from collections import defaultdict
+from modules.dbxdeployer.script import SqlScript
 from modules.dbxdeployer.config.TrackingTable import TrackingTable
 
 class DatabricksSession:
@@ -43,8 +46,25 @@ class DatabricksSession:
         except Exception as e:
             raise e
 
-    def fetch_tracking_metadata():
-        pass
+    def fetch_tracking_table_metadata(self):
+        """Check query metadata about tracking table creation."""
+        query = f"""\
+            SELECT
+                CREATED,
+                LAST_ALTERED
+            FROM {self.change_history_table.database_name}.INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = REPLACE('{self.change_history_table.schema_name}','\"','')
+                AND TABLE_NAME = REPLACE('{self.change_history_table.table_name}','\"','')
+        """
+        results = self.execute_sql(query=query, logger=self.logger)
+
+        # Collect all the results into a list
+        tracking_table_metadata = dict()
+        for row in results.result.data_array:
+            tracking_table_metadata["created"] = row[0]
+            tracking_table_metadata["last_altered"] = row[1]
+
+        return tracking_table_metadata
 
     def create_tracking_schema(self, dry_run: bool):
         """Create schema for tracking table if it doesn't exist."""
@@ -102,6 +122,33 @@ class DatabricksSession:
 
     def tracking_table_exists(self, create_tracking_table: bool, dry_run: bool) -> bool:
         """Check if tracking table exists."""
+
+        tracking_table_metadata = self.fetch_tracking_table_metadata()
+
+        if tracking_table_metadata:
+            self.logger.info(
+                f"Using existing tracking table {self.tracking_table.fully_qualified}",
+                last_altered = tracking_table_metadata["last_altered"]
+            )
+            return True
+
+        elif create_tracking_table:
+            schema_exists = self.tracking_schema_exists()
+            if not schema_exists:
+                self.create_tracking_schema(dry_run=dry_run)
+
+            self.create_tracking_table(dry_run=dry_run)
+
+            if dry_run:
+                return False
+
+            self.logger.info("Created tracking table.")
+            return True
+        else:
+            raise ValueError(
+                f"Unable to find tracking table {self.tracking_table.fully_qualified}"
+            )
+        
         
 
     def api_scripts_metadata(self):
@@ -167,20 +214,82 @@ class DatabricksSession:
         
         return sql_scripts, max_versions
 
-    def apply_create_script(self, script):
-        pass
+    def apply_api_script(self, script_object, operation, script, api_details):
+        """Function used to execute API calls."""
 
-    def apply_update_script(self, script):
-        pass
+        # Get the API details from the config file
+        endpoint = api_details["endpoint"]
+        method = api_details["method"]
+        requires_body = api_details.get("requires_body", False)
+        body_variables = api_details.get("body_variables", None)
 
-    def apply_delete_script(self, script):
-        pass
+        url = f"{self.workspace_url}{endpoint}"
 
-    def reset_session():
-        pass
+        if method == "POST":
+            response = requests.post(url, headers=self.headers, json=script if requires_body else None)
+        elif method == "DELETE":
+            response = requests.delete(url, headers=self.headers)
+        elif method == "PATCH":
+            response = requests.patch(url, headers=self.headers, json=script if requires_body else None)
+        else:
+            raise ValueError(f"Unsupported HTTP method: {method}")
 
-    def reset_query_tag():
-        pass
 
-    def apply_change_script():
-        pass
+    def apply_change_script(
+            self,
+            script: SqlScript,
+            script_content: str,
+            dry_run: bool,
+            logger: structlog.BoundLogger
+        ) -> None:
+        """Function used to execute SQL scripts."""
+        if dry_run:
+            logger.debug("Running in dry-run mode. Skipping execution.")
+            return
+        
+        logger.info("Applying change script.")
+
+        # create change-related variables
+        checksum = hashlib.sha224(script_content.encode("utf-8")).hexdigest()
+        execution_time = 0
+        status = "Success"
+
+        # valid and execute script
+        if len(script_content) > 0:
+            start = time.time()
+
+            try:
+                self.execute_sql(query=script_content, logger=logger)
+            except Exception as e:
+                raise Exception(f"Failed to execute {script.name}") from e
+
+            end = time.time()
+            execution_time = round(end - start)
+
+        # Log the execution in the tracking table
+        query = f"""\
+            INSERT INTO {self.change_history_table.fully_qualified} (
+                VERSION,
+                DESCRIPTION,
+                SCRIPT,
+                SCRIPT_TYPE,
+                SCRIPT_OBJECT,
+                CHECKSUM,
+                EXECUTION_TIME,
+                STATUS,
+                INSTALLED_BY,
+                INSTALLED_ON
+            ) VALUES (
+                '{getattr(script, "version", "")}',
+                '{script.description}',
+                '{script.name}',
+                '{script.type}',
+                '{script.object}',
+                '{checksum}',
+                {execution_time},
+                '{status}',
+                '{self.user}',
+                CURRENT_TIMESTAMP
+            );
+        """
+        self.execute_sql(query=query, logger=logger)

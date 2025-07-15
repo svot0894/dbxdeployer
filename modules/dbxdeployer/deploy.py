@@ -12,7 +12,7 @@ def sort_by_version(version: str):
     return tuple(map(int, version.split(".")))
 
 
-def deploy(configs, session: DatabricksSession):
+def deploy(configs, api_configs, session: DatabricksSession):
 
     logger.info(
         "Starting Databricks deployment"
@@ -71,12 +71,7 @@ def deploy(configs, session: DatabricksSession):
                 scripts_skipped += 1
                 continue
 
-            if script.operation == "create":
-                session.apply_create_script(script)
-            elif script.operation == "update":
-                session.apply_update_script(script)
-            elif script.operation == "delete":
-                session.apply_delete_script(script)
+            session.apply_api_script(script.object, script.operation, script)
             
             scripts_applied += 1
         

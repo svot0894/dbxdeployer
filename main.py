@@ -19,14 +19,21 @@ def main():
     # define root directory
     root_dir = Path(__file__).parent
 
-    # creat path to configs.py file
+    # creat path to configs.yml file
     config_path = os.path.join(root_dir, "configs", args.env, "configs.yml")
 
-    # load configurations
+    # create path to api-configs.yml file
+    api_config_paths = os.path.join(root_dir, "configs", "api-configs.yml")
+
+    # load environmental configs.yml
     with open(config_path) as cfg:
         configs = yaml.safe_load(cfg)
+    
+    # load api-configs.yml
+    with open(api_config_paths) as cfg:
+        api_configs = yaml.safe_load(cfg)
 
-    deploy(configs)
+    deploy(configs, api_configs)
 
 
 if __name__ == "__main__":
