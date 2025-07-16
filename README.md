@@ -29,3 +29,7 @@
 - Execution Logic:
     - Parse folders to identify scripts to execute based on version numbers.
     - Skip already executed files.
+    - SQL scripts objects are deployed based on a pre-defined order in the configs.yml.
+
+#### Open Points:
+- how do we handle permissions? for api-configs objects, we can also do via API and for sql objects we can handle via sql, but how do we organize it?

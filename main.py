@@ -2,9 +2,21 @@ import os
 import argparse
 from pathlib import Path
 import yaml
+import structlog
+from modules.dbxdeployer.session.DatabricksSession import DatabricksSession
 from modules.dbxdeployer.deploy import deploy
 
+module_logger = structlog.get_logger(__name__)
+
+def load_yaml_config(path: Path):
+    if not path.exists():
+        raise FileNotFoundError(f"YAML config file not found: {path}.")
+    with path.open() as f:
+        return yaml.safe_load(f)
+
 def main():
+    logger = structlog.get_logger()
+
     # parse command-line arguments
     parser = argparse.ArgumentParser(
         description="Load environment-specific configurations."
@@ -25,15 +37,20 @@ def main():
     # create path to api-configs.yml file
     api_config_paths = os.path.join(root_dir, "configs", "api-configs.yml")
 
-    # load environmental configs.yml
-    with open(config_path) as cfg:
-        configs = yaml.safe_load(cfg)
+    # load environmental configs.yml and api-configs.yml
+    configs = load_yaml_config(config_path)
+    api_configs = load_yaml_config(api_config_paths)
     
-    # load api-configs.yml
-    with open(api_config_paths) as cfg:
-        api_configs = yaml.safe_load(cfg)
+    # initiate Databricks session
+    session = DatabricksSession(
+        workspace_url=configs["workspace_url"],
+        warehouse_id=configs["warehouse_id"],
+        token=configs["token"],
+        logger=logger,
+        tracking_table=configs["tracking_table"]
+    )
 
-    deploy(configs, api_configs)
+    deploy(configs, api_configs, session)
 
 
 if __name__ == "__main__":

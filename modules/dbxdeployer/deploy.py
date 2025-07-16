@@ -17,8 +17,6 @@ def deploy(configs, api_configs, session: DatabricksSession):
     logger.info(
         "Starting Databricks deployment"
         , dry_run = configs["dry_run"]
-        , dbx_workspace = configs["dbx_workspace"]
-        , dbx_warehouse = configs["dbx_warehouse"]
     )
 
     DEPLOYMENT_ORDER = configs['deployment_order']
@@ -41,8 +39,6 @@ def deploy(configs, api_configs, session: DatabricksSession):
             , sort_by_version(script.version)
             )
     )
-
-    print(all_scripts_sorted)
 
     scripts_skipped = 0
     scripts_applied = 0
@@ -71,7 +67,10 @@ def deploy(configs, api_configs, session: DatabricksSession):
                 scripts_skipped += 1
                 continue
 
-            session.apply_api_script(script.object, script.operation, script)
+            # Fetch API details for specific object and operation
+            api_details = api_configs[script.object][script.operation]
+
+            session.apply_api_script(script.object, script.operation, script, api_details)
             
             scripts_applied += 1
         
