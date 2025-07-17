@@ -4,10 +4,18 @@
     - Contains all deployable assets.
         - sql-scripts/:
             - Organized by Unity Catalog object type (catalogs, schemas, tables, views, functions).
+            - If new objects need to be versioned, just add a new folder for the object.
             - Each folder contains SQL scripts for creating or modifying the respective objects.
+            - Each folder is versioned separately.
         - api-configs/:
             - Organized by API object type (jobs, alerts).
-            - Each folder contains JSON or YAML files for configuring Databricks jobs and alerts.
+            - If new objects need to be versioned, just add a new folder for the object.
+            - Each folder contains the JSON definition for each object.
+        - permissions/:
+            - Permissions to all objects in a workspace are stored in a DB table.
+            - Add/update/delete permissions to an object by creating an update script.
+            - Permissions job checks every day for permissions where the status = PENDING.
+
 - modules/:
     - Contains reusable modules (e.g., Python scripts, libraries, or utilities).
 - notebooks/:
@@ -22,6 +30,9 @@
     - API configs:
         - Use A<version_number>_<object_type>_<operation>__<description>.json for API configurations.
         - Example: A1.0_alerts_create__alertName1.json
+    - Permissions:
+        - Use P<version_number>__<description>.sql for SQL scripts.
+        - Example: P1.0_permissionsToTableABC.sql
 
 ### Deployment Workflow
 - Tracking Versions:
@@ -30,6 +41,3 @@
     - Parse folders to identify scripts to execute based on version numbers.
     - Skip already executed files.
     - SQL scripts objects are deployed based on a pre-defined order in the configs.yml.
-
-#### Open Points:
-- how do we handle permissions? for api-configs objects, we can also do via API and for sql objects we can handle via sql, but how do we organize it?

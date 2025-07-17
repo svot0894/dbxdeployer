@@ -21,7 +21,7 @@ class Script(ABC):
     def from_path(cls, file_path: Path, **kwargs):
         name = file_path.name
         name_parts = cls.pattern.search(file_path.name.strip())
-        description = name_parts.group("description").replace("_", " ").capitalize()
+        description = name_parts.group("description").replace("_", " ")
 
         return cls(
             name=name

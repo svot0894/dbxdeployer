@@ -1,1 +1,0 @@
-create catalog if not exists soraia_catalog_{{env}};

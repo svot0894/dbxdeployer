@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 import yaml
 import structlog
+from modules.dbxdeployer.config.TrackingTable import TrackingTable
 from modules.dbxdeployer.session.DatabricksSession import DatabricksSession
 from modules.dbxdeployer.deploy import deploy
 
@@ -32,10 +33,10 @@ def main():
     root_dir = Path(__file__).parent
 
     # creat path to configs.yml file
-    config_path = os.path.join(root_dir, "configs", args.env, "configs.yml")
+    config_path = Path(root_dir, "configs", args.env, "configs.yml")
 
     # create path to api-configs.yml file
-    api_config_paths = os.path.join(root_dir, "configs", "api-configs.yml")
+    api_config_paths = Path(root_dir, "configs", "api-configs.yml")
 
     # load environmental configs.yml and api-configs.yml
     configs = load_yaml_config(config_path)
@@ -45,9 +46,10 @@ def main():
     session = DatabricksSession(
         workspace_url=configs["workspace_url"],
         warehouse_id=configs["warehouse_id"],
+        user=configs["user"],
         token=configs["token"],
         logger=logger,
-        tracking_table=configs["tracking_table"]
+        tracking_table=TrackingTable.from_str(configs["tracking_table"])
     )
 
     deploy(configs, api_configs, session)

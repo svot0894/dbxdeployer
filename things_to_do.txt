@@ -1,0 +1,8 @@
+- check what happens if:
+    - create object
+    - run deployment for object
+    - will it duplicate??
+- sql file description not working properly: fix
+- include permissions deployment + create the job to implement permissions
+- can i run sql scripts with multiple statements?
+- requests throws an ssl verify error without verify=false

@@ -1,0 +1,36 @@
+{
+      "display_name": "Audit Alert",
+      "owner_user_name": "a120446@amerisourcebergen.com",
+      "query_text": "select 1;",
+      "warehouse_id": "57aeb9dcffe523e8",
+      "run_as_user_name": "a120446@amerisourcebergen.com",
+      "evaluation": {
+        "source": {
+          "name": "1",
+          "display": "1",
+          "aggregation": "AGGREGATION_UNSPECIFIED"
+        },
+        "comparison_operator": "EQUAL",
+        "threshold": {
+          "value": {
+            "string_value": ""
+          }
+        },
+        "notification": {
+          "subscriptions": [
+            {
+              "user_email": "a120446@amerisourcebergen.com"
+            }
+          ],
+          "retrigger_seconds": 0,
+          "notify_on_ok": false
+        },
+        "state": "UNKNOWN"
+      },
+      "schedule": {
+        "quartz_cron_schedule": "53 4 */1 * * ?",
+        "timezone_id": "UTC",
+        "pause_status": "UNPAUSED"
+      },
+      "lifecycle_state": "ACTIVE"
+    }

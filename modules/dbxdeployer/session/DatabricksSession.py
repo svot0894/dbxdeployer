@@ -2,8 +2,7 @@ import hashlib
 import time
 import structlog
 import requests
-from collections import defaultdict
-from modules.dbxdeployer.script import SqlScript
+from modules.dbxdeployer.script import SqlScript, ApiConfigs
 from modules.dbxdeployer.config.TrackingTable import TrackingTable
 
 class DatabricksSession:
@@ -12,9 +11,18 @@ class DatabricksSession:
     token: str
     tracking_table: TrackingTable
 
-    def __init__(self, workspace_url, warehouse_id, token, logger, tracking_table: TrackingTable):
+    def __init__(
+            self,
+            workspace_url: str,
+            warehouse_id: str,
+            user: str,
+            token: str,
+            logger,
+            tracking_table: TrackingTable
+        ):
         self.workspace_url = workspace_url
         self.warehouse_id = warehouse_id
+        self.user = user
         self.token = token
         self.headers = {
             "Authorization": f"Bearer {self.token}",
@@ -22,7 +30,6 @@ class DatabricksSession:
         }
         self.logger = logger
         self.tracking_table = tracking_table
-
 
     def execute_sql(self, query: str, logger: structlog.BoundLogger):
         """Executes a SQL query using Databricks SQL API."""
@@ -36,10 +43,13 @@ class DatabricksSession:
                 "statement": query
                 , "warehouse_id": self.warehouse_id
             }
-            response = requests.post(endpoint, json=payload, headers=self.headers)
+            response = requests.post(endpoint, json=payload, headers=self.headers, verify=False)
 
             if response.status_code != 200:
                 raise Exception(f"Failed to execute query: {response.text}")
+            elif response.json().get("status").get("state") == "FAILED":
+                error_message = response.json().get("status").get("error").get("message")
+                raise Exception(f"Failed to execute query due to a syntax error: {error_message}")
             
             return response.json()
 
@@ -52,17 +62,21 @@ class DatabricksSession:
             SELECT
                 CREATED,
                 LAST_ALTERED
-            FROM {self.change_history_table.database_name}.INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_SCHEMA = REPLACE('{self.change_history_table.schema_name}','\"','')
-                AND TABLE_NAME = REPLACE('{self.change_history_table.table_name}','\"','')
+            FROM {self.tracking_table.database_name}.INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = REPLACE('{self.tracking_table.schema_name}','\"','')
+                AND TABLE_NAME = REPLACE('{self.tracking_table.table_name}','\"','')
         """
         results = self.execute_sql(query=query, logger=self.logger)
 
-        # Collect all the results into a list
+        # If there are no results, the tracking table does not exist
         tracking_table_metadata = dict()
-        for row in results.result.data_array:
-            tracking_table_metadata["created"] = row[0]
-            tracking_table_metadata["last_altered"] = row[1]
+
+        if results.get("result", {}).get("data_array"):
+            row = results["result"]["data_array"][0]
+            tracking_table_metadata = {
+            "created": row[0],
+            "last_altered": row[1]
+            }
 
         return tracking_table_metadata
 
@@ -90,21 +104,25 @@ class DatabricksSession:
         
         result = self.execute_sql(query, logger=self.logger)
 
-        for row in result.result.data_array:
-            return row[0] > 0
+        # If there are no results, the schema does not exist
+        for row in result.get("result", {}).get("data_array"):
+            schema_exists = int(row[0]) > 0
+        
+        return schema_exists
 
     def create_tracking_table(self, dry_run: bool) -> None:
         query = f"""
             CREATE TABLE IF NOT EXISTS {self.tracking_table.fully_qualified} (
-                VERSION VARCHAR,
-                DESCRIPTION VARCHAR,
-                SCRIPT VARCHAR,
-                SCRIPT_TYPE VARCHAR,
-                SCRIPT_OBJECT VARCHAR,
-                CHECKSUM VARCHAR,
-                EXECUTION_TIME NUMBER,
-                STATUS VARCHAR,
-                INSTALLED_BY VARCHAR,
+                VERSION STRING,
+                DESCRIPTION STRING,
+                SCRIPT STRING,
+                SCRIPT_TYPE STRING,
+                SCRIPT_OBJECT STRING,
+                SCRIPT_OPERATION STRING,
+                CHECKSUM STRING,
+                EXECUTION_TIME INT,
+                STATUS STRING,
+                INSTALLED_BY STRING,
                 INSTALLED_ON TIMESTAMP
             )
         """
@@ -148,22 +166,29 @@ class DatabricksSession:
             raise ValueError(
                 f"Unable to find tracking table {self.tracking_table.fully_qualified}"
             )
-        
-        
 
-    def api_scripts_metadata(self):
+    def api_scripts_metadata(self, create_tracking_table: bool, dry_run: bool):
         """Fetch info about all API scripts that have been previously run."""
+
+        tracking_table_exists = self.tracking_table_exists(
+            create_tracking_table=create_tracking_table,
+            dry_run=dry_run
+        )
+
+        if not tracking_table_exists:
+            return None, None
+
         query = f"""
             SELECT VERSION, SCRIPT, SCRIPT_OBJECT, CHECKSUM
             FROM {self.tracking_table.fully_qualified}
-            WHERE SCRIPT_TYPE = 'A'
+            WHERE SCRIPT_TYPE = 'A' AND STATUS = 'Success'
             ORDER BY SCRIPT_OBJECT, INSTALLED_ON DESC
         """
         results = self.execute_sql(query, logger=self.logger)
 
         # parse the results
         sql_scripts = []
-        for row in results.result.data_array:
+        for row in results.get("result", {}).get("data_array", []):
             version, script, script_object, checksum = row
             sql_scripts.append({
             "version": version,
@@ -182,20 +207,28 @@ class DatabricksSession:
         
         return sql_scripts, max_versions
 
-
-    def sql_scripts_metadata(self):
+    def sql_scripts_metadata(self, create_tracking_table: bool, dry_run: bool):
         """Fetch info about all SQL scripts that have been previously run."""
+
+        tracking_table_exists = self.tracking_table_exists(
+            create_tracking_table=create_tracking_table,
+            dry_run=dry_run
+        )
+
+        if not tracking_table_exists:
+            return None, None
+        
         query = f"""
             SELECT VERSION, SCRIPT, SCRIPT_OBJECT, CHECKSUM
             FROM {self.tracking_table.fully_qualified}
-            WHERE SCRIPT_TYPE = 'S'
+            WHERE SCRIPT_TYPE = 'S' AND STATUS = 'Success'
             ORDER BY SCRIPT_OBJECT, INSTALLED_ON DESC
         """
         results = self.execute_sql(query, logger=self.logger)
 
         # parse the results
         sql_scripts = []
-        for row in results.result.data_array:
+        for row in results.get("result", {}).get("data_array", []):
             version, script, script_object, checksum = row
             sql_scripts.append({
             "version": version,
@@ -214,10 +247,27 @@ class DatabricksSession:
         
         return sql_scripts, max_versions
 
-    def apply_api_script(self, script_object, operation, script, api_details):
+    def apply_api_script(
+            self,
+            script: ApiConfigs,
+            script_content: str,
+            dry_run: bool,
+            logger: structlog.BoundLogger,
+            api_details
+        ) -> None:
         """Function used to execute API calls."""
+        if dry_run:
+            logger.debug("Running in dry-run mode. Skipping execution.")
+            return
+        
+        logger.info("Applying API script...")
 
-        # Get the API details from the config file
+        # create change-related variables
+        checksum = hashlib.sha224(script_content.encode("utf-8")).hexdigest()
+        execution_time = 0
+        status = "Success"
+
+        # get the API details
         endpoint = api_details["endpoint"]
         method = api_details["method"]
         requires_body = api_details.get("requires_body", False)
@@ -225,15 +275,50 @@ class DatabricksSession:
 
         url = f"{self.workspace_url}{endpoint}"
 
-        if method == "POST":
-            response = requests.post(url, headers=self.headers, json=script if requires_body else None)
-        elif method == "DELETE":
-            response = requests.delete(url, headers=self.headers)
-        elif method == "PATCH":
-            response = requests.patch(url, headers=self.headers, json=script if requires_body else None)
-        else:
-            raise ValueError(f"Unsupported HTTP method: {method}")
+        if len(script_content) > 0:
+            start = time.time()
+            try:
+                if method == "POST":
+                    response = requests.post(url, headers=self.headers, data=script_content if requires_body else None, verify=False)
+                    print(response)
+                elif method == "DELETE":
+                    response = requests.delete(url, headers=self.headers, verify=False)
+                elif method == "PATCH":
+                    response = requests.patch(url, headers=self.headers, data=script_content if requires_body else None, verify=False)
+            except Exception as e:
+                    raise Exception(f"Failed to execute {script.name}") from e
+            end = time.time()
+            execution_time = round(end - start)
 
+        # Log the execution in the tracking table
+        query = f"""\
+            INSERT INTO {self.tracking_table.fully_qualified} (
+                VERSION,
+                DESCRIPTION,
+                SCRIPT,
+                SCRIPT_TYPE,
+                SCRIPT_OBJECT,
+                SCRIPT_OPERATION,
+                CHECKSUM,
+                EXECUTION_TIME,
+                STATUS,
+                INSTALLED_BY,
+                INSTALLED_ON
+            ) VALUES (
+                '{getattr(script, "version", "")}',
+                '{script.description}',
+                '{script.name}',
+                '{script.type}',
+                '{script.object}',
+                '{script.operation}',
+                '{checksum}',
+                {execution_time},
+                '{status}',
+                '{self.user}',
+                CURRENT_TIMESTAMP
+            );
+        """
+        self.execute_sql(query=query, logger=logger)
 
     def apply_change_script(
             self,
@@ -257,18 +342,16 @@ class DatabricksSession:
         # valid and execute script
         if len(script_content) > 0:
             start = time.time()
-
             try:
                 self.execute_sql(query=script_content, logger=logger)
             except Exception as e:
                 raise Exception(f"Failed to execute {script.name}") from e
-
             end = time.time()
             execution_time = round(end - start)
 
         # Log the execution in the tracking table
         query = f"""\
-            INSERT INTO {self.change_history_table.fully_qualified} (
+            INSERT INTO {self.tracking_table.fully_qualified} (
                 VERSION,
                 DESCRIPTION,
                 SCRIPT,

@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "Module for Databricks deployment."
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "jinja2>=3.1.6",
+    "pyyaml>=6.0.2",
+    "requests>=2.32.4",
+    "structlog>=25.4.0",
+]
 
 [dependency-groups]
 dev = [
