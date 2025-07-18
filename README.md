@@ -6,6 +6,7 @@
             - Organized by Unity Catalog object type (catalogs, schemas, tables, views, functions).
             - If new objects need to be versioned, just add a new folder for the object.
             - Each folder contains SQL scripts for creating or modifying the respective objects.
+                - Or any changes related to the object, eg.: backup of a table.
             - Each folder is versioned separately.
         - api-configs/:
             - Organized by API object type (jobs, alerts).
@@ -40,4 +41,8 @@
 - Execution Logic:
     - Parse folders to identify scripts to execute based on version numbers.
     - Skip already executed files.
-    - SQL scripts objects are deployed based on a pre-defined order in the configs.yml.
+    - Objects are deployed based on a pre-defined order in the configs.yml.
+    - API endpoints are defined in api-configs.yml making the tool easily extendable for other API-deployable objects.
+---
+### Current Limitations:
+- Each SQL script can only contain 1 SQL statement.

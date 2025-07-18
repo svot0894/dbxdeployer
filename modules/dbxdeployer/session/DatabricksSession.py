@@ -2,7 +2,7 @@ import hashlib
 import time
 import structlog
 import requests
-from modules.dbxdeployer.script import SqlScript, ApiConfigs
+from modules.dbxdeployer.session.script import SqlScript, ApiConfigs
 from modules.dbxdeployer.config.TrackingTable import TrackingTable
 
 class DatabricksSession:
@@ -33,25 +33,39 @@ class DatabricksSession:
 
     def execute_sql(self, query: str, logger: structlog.BoundLogger):
         """Executes a SQL query using Databricks SQL API."""
-        logger.debug(
-            "Executing query"
-            , query = query
-        )
+
+        logger.debug("Executing query...", query = query)
+        endpoint = f"{self.workspace_url}/api/2.0/sql/statements"
+        payload = {
+            "statement": query
+            , "warehouse_id": self.warehouse_id
+        }
+
         try:
-            endpoint = f"{self.workspace_url}/api/2.0/sql/statements"
-            payload = {
-                "statement": query
-                , "warehouse_id": self.warehouse_id
-            }
             response = requests.post(endpoint, json=payload, headers=self.headers, verify=False)
 
             if response.status_code != 200:
                 raise Exception(f"Failed to execute query: {response.text}")
-            elif response.json().get("status").get("state") == "FAILED":
-                error_message = response.json().get("status").get("error").get("message")
+
+            response_json = response.json()
+            sql_statement_id = response_json.get("statement_id")
+
+            expected_final_status = ['SUCCEEDED', 'FAILED']
+
+            # if query execution takes more than 10 seconds (default), we need to poll the status
+            while response_json.get("status").get("state") not in expected_final_status:
+                time.sleep(5)
+                response_json = requests.get(
+                    endpoint + f"/{sql_statement_id}",
+                    headers=self.headers,
+                    verify=False
+                ).json()
+
+            if response_json.get("status").get("state") == "FAILED":
+                error_message = response_json.get("status").get("error").get("message")
                 raise Exception(f"Failed to execute query due to a syntax error: {error_message}")
             
-            return response.json()
+            return response_json
 
         except Exception as e:
             raise e

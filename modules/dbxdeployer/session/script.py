@@ -34,7 +34,7 @@ class Script(ABC):
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class SqlScript(Script):
     pattern: ClassVar[re.Pattern[str]] = re.compile(
-        r"^(S)(?P<version>.+?)?_(?P<object>.+?)__(?P<description>.+?)\."
+        r"^(S)(?P<version>.+?)_(?P<object>.+?)__(?P<description>.+)\."
         , re.IGNORECASE
     )
     type: ClassVar[Literal["S"]] = "S"
@@ -55,7 +55,7 @@ class SqlScript(Script):
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ApiConfigs(Script):
     pattern: ClassVar[re.Pattern[str]] = re.compile(
-        r"^(A)(?P<version>.+?)?_(?P<object>.+?)_(?P<operation>.+?)__(?P<description>.+?)\."
+        r"^(A)(?P<version>.+?)?_(?P<object>.+?)_(?P<operation>.+?)__(?P<description>.+)\."
         , re.IGNORECASE
     )
     type: ClassVar[Literal["A"]] = "A"
@@ -91,6 +91,7 @@ def get_all_scripts_recursively(root_dir: Path):
     for entry in root_dir.iterdir():
         if entry.is_file():
             file_path = Path(entry)
+            print(file_path)
             script = script_factory(file_path=file_path)
             if script is not None:
                 all_files.append(script)
