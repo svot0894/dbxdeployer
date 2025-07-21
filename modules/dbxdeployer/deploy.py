@@ -2,8 +2,8 @@ import hashlib
 from pathlib import Path
 import structlog
 import jinja2
-from modules.dbxdeployer.session.script import get_all_scripts_recursively
-from modules.dbxdeployer.session.DatabricksSession import DatabricksSession
+from session.script import get_all_scripts_recursively
+from session.DatabricksSession import DatabricksSession
 
 logger = structlog.getLogger(__name__)
 

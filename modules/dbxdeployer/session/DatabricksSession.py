@@ -2,8 +2,8 @@ import hashlib
 import time
 import structlog
 import requests
-from modules.dbxdeployer.session.script import SqlScript, ApiConfigs
-from modules.dbxdeployer.config.TrackingTable import TrackingTable
+from session.script import SqlScript, ApiConfigs
+from config.TrackingTable import TrackingTable
 
 class DatabricksSession:
     workspace_url: str

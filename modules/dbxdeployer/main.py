@@ -2,9 +2,9 @@ import argparse
 from pathlib import Path
 import yaml
 import structlog
-from modules.dbxdeployer.config.TrackingTable import TrackingTable
-from modules.dbxdeployer.session.DatabricksSession import DatabricksSession
-from modules.dbxdeployer.deploy import deploy
+from config.TrackingTable import TrackingTable
+from session.DatabricksSession import DatabricksSession
+from deploy import deploy
 
 module_logger = structlog.get_logger(__name__)
 
@@ -22,12 +22,12 @@ def main():
         description="Load environment-specific configurations."
     )
     parser.add_argument(
-        "env",
+        "--env",
         type=str,
         help="The environment to load configurations for (e.g. dev, tst, stg, prd)."
     )
     parser.add_argument(
-        "config_folder",
+        "--config_folder",
         type=str,
         help="Path to the folder where configs.yml and api-configs.yml files are located."
     )
@@ -39,7 +39,7 @@ def main():
     api_config_path = config_folder / "api-configs.yml"
 
     # load configs
-    logger.info(f"Loading configs from {config_path}...")
+    logger.info(f"Loading configs from...")
     configs = load_yaml_config(config_path)
     api_configs = load_yaml_config(api_config_path)
 
