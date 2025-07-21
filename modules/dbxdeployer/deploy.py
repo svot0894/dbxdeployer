@@ -13,7 +13,7 @@ def sort_by_version(version: str):
     return tuple(map(int, version.split(".")))
 
 
-def deploy(configs, api_configs, session: DatabricksSession):
+def deploy(configs, session: DatabricksSession):
 
     # create required variables
     create_tracking_table = configs["create_tracking_table"]
@@ -80,7 +80,7 @@ def deploy(configs, api_configs, session: DatabricksSession):
                 continue
 
             # fetch API details for specific object and operation
-            api_details = api_configs[script.object][script.operation]
+            api_details = configs[script.object][script.operation]
 
             session.apply_api_script(script, content, dry_run, logger, api_details)
             
