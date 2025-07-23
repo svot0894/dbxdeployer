@@ -285,7 +285,7 @@ class DatabricksSession:
         endpoint = api_details["endpoint"]
         method = api_details["method"]
         requires_body = api_details.get("requires_body", False)
-        body_variables = api_details.get("body_variables", None)
+        #body_variables = api_details.get("body_variables", None)
 
         url = f"{self.workspace_url}{endpoint}"
 
