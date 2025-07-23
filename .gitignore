@@ -8,4 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
-configs/
+configs/*
+
+# Don't ignore this file
+!configs/api-configs.yml

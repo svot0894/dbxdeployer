@@ -1,0 +1,31 @@
+jobs:
+  create:
+    endpoint: "/api/2.2/jobs/create"
+    method: "POST"
+    requires_body: true
+    body_variables:
+  delete:
+    endpoint: "/api/2.2/jobs/delete"
+    method: "POST"
+    requires_body: true
+    body_variables:
+      - job_id
+  update:
+    endpoint: "/api/2.2/jobs/reset"
+    method: "POST"
+    requires_body: true
+    body_variables: "job_id"
+
+alerts:
+  create:
+    endpoint: "/api/2.0/alerts"
+    method: "POST"
+    requires_body: true
+  delete:
+    endpoint: "/api/2.0/alerts/{id}"
+    method: "DELETE"
+    requires_body: false
+  update:
+    endpoint: "/api/2.0/alerts/{id}"
+    method: "PATCH"
+    requires_body: false
