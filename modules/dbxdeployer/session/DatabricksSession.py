@@ -11,6 +11,8 @@ class DatabricksSession:
     token: str
     tracking_table: TrackingTable
 
+    """DatabricksSession class to manage connections and operations with Databricks SQL API."""
+
     def __init__(
             self,
             workspace_url: str,
@@ -181,8 +183,8 @@ class DatabricksSession:
                 f"Unable to find tracking table {self.tracking_table.fully_qualified}"
             )
 
-    def api_scripts_metadata(self, create_tracking_table: bool, dry_run: bool):
-        """Fetch info about all API scripts that have been previously run."""
+    def get_scripts_metadata(self, script_type: str, create_tracking_table: bool, dry_run: bool) -> dict:
+        """Fetch max version per object for API scripts that have been previously run."""
 
         tracking_table_exists = self.tracking_table_exists(
             create_tracking_table=create_tracking_table,
@@ -193,73 +195,21 @@ class DatabricksSession:
             return None, None
 
         query = f"""
-            SELECT VERSION, SCRIPT, SCRIPT_OBJECT, CHECKSUM
+            SELECT SCRIPT_OBJECT, MAX(VERSION) AS MAX_VERSION
             FROM {self.tracking_table.fully_qualified}
-            WHERE SCRIPT_TYPE = 'A' AND STATUS = 'Success'
-            ORDER BY SCRIPT_OBJECT, INSTALLED_ON DESC
+            WHERE SCRIPT_TYPE = '{script_type}' AND STATUS = 'Success'
+            GROUP BY SCRIPT_OBJECT
         """
         results = self.execute_sql(query, logger=self.logger)
 
-        # parse the results
-        sql_scripts = []
-        for row in results.get("result", {}).get("data_array", []):
-            version, script, script_object, checksum = row
-            sql_scripts.append({
-            "version": version,
-            "script": script,
-            "script_object": script_object,
-            "checksum": checksum
-        })
-
         # determine max version per object
         max_versions = {}
-        for entry in sql_scripts:
-            script_object = entry["script_object"]
-            version = entry["version"]
-            if script_object not in max_versions or version > max_versions[script_object]:
-                max_versions[script_object] = version
-        
-        return sql_scripts, max_versions
-
-    def sql_scripts_metadata(self, create_tracking_table: bool, dry_run: bool):
-        """Fetch info about all SQL scripts that have been previously run."""
-
-        tracking_table_exists = self.tracking_table_exists(
-            create_tracking_table=create_tracking_table,
-            dry_run=dry_run
-        )
-
-        if not tracking_table_exists:
-            return None, None
-        
-        query = f"""
-            SELECT VERSION, SCRIPT, SCRIPT_OBJECT, CHECKSUM
-            FROM {self.tracking_table.fully_qualified}
-            WHERE SCRIPT_TYPE = 'S' AND STATUS = 'Success'
-            ORDER BY SCRIPT_OBJECT, INSTALLED_ON DESC
-        """
-        results = self.execute_sql(query, logger=self.logger)
-
-        # parse the results
-        sql_scripts = []
         for row in results.get("result", {}).get("data_array", []):
-            version, script, script_object, checksum = row
-            sql_scripts.append({
-            "version": version,
-            "script": script,
-            "script_object": script_object,
-            "checksum": checksum
-        })
-
-        # determine max version per object
-        max_versions = {}
-        for entry in sql_scripts:
-            script_object = entry["script_object"]
-            version = entry["version"]
-            if script_object not in max_versions or version > max_versions[script_object]:
-                max_versions[script_object] = version
+            script_object, max_version = row
+            if script_object not in max_versions or max_version > max_versions[script_object]:
+                max_versions[script_object] = max_version
         
-        return sql_scripts, max_versions
+        return max_versions
 
     def apply_api_script(
             self,
@@ -282,10 +232,9 @@ class DatabricksSession:
         status = "Success"
 
         # get the API details
-        endpoint = api_details["endpoint"]
-        method = api_details["method"]
+        endpoint = api_details.get("endpoint")
+        method = api_details.get("method")
         requires_body = api_details.get("requires_body", False)
-        #body_variables = api_details.get("body_variables", None)
 
         url = f"{self.workspace_url}{endpoint}"
 
@@ -346,7 +295,7 @@ class DatabricksSession:
             logger.debug("Running in dry-run mode. Skipping execution.")
             return
         
-        logger.info("Applying change script.")
+        logger.info("Applying change script...")
 
         # create change-related variables
         checksum = hashlib.sha224(script_content.encode("utf-8")).hexdigest()

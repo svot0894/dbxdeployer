@@ -17,16 +17,16 @@ def sort_by_version(version: str):
 def deploy(config: DeployConfig, session: DatabricksSession):
 
     logger.info(
-        "Starting Databricks deployment"
+        "Starting Databricks deployment..."
         , dry_run = config.dry_run
-        , tracking_table = config.tracking_table
+        , tracking_table = config.tracking_table.fully_qualified
     )
 
     # fetch max version per object from tracking table where type = A
-    _, api_scripts_max_versions = session.api_scripts_metadata(config.create_tracking_table, config.dry_run)
+    api_scripts_max_versions = session.get_scripts_metadata("A", config.create_tracking_table, config.dry_run)
 
     # fetch  max version per object from tracking table where type = S
-    _, sql_scripts_max_versions = session.sql_scripts_metadata(config.create_tracking_table, config.dry_run)
+    sql_scripts_max_versions = session.get_scripts_metadata("S", config.create_tracking_table, config.dry_run)
 
     # fetch all files in the deployables folder
     root_path = Path(config.root_folder)
@@ -72,7 +72,7 @@ def deploy(config: DeployConfig, session: DatabricksSession):
                 continue
 
             # fetch API details for specific object and operation
-            api_details = config[script.object][script.operation]
+            api_details = config.api_configs[script.object][script.operation]
 
             session.apply_api_script(script, content, config.dry_run, logger, api_details)
             

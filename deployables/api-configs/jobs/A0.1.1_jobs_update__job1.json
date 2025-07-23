@@ -1,0 +1,32 @@
+{
+  "job_id": 768570098995392,
+  "new_settings": {
+    "name": "job_18jul25",
+    "email_notifications": {
+      "no_alert_for_skipped_runs": false
+    },
+    "webhook_notifications": {},
+    "timeout_seconds": 0,
+    "max_concurrent_runs": 1,
+    "tasks": [
+      {
+        "task_key": "job_18jul25_NEW",
+        "run_if": "ALL_SUCCESS",
+        "notebook_task": {
+          "notebook_path": "/Workspace/Users/a120446@amerisourcebergen.com/Untitled Notebook 2025-07-17 13:44:38",
+          "source": "WORKSPACE"
+        },
+        "timeout_seconds": 0,
+        "email_notifications": {},
+        "webhook_notifications": {}
+      }
+    ],
+    "queue": {
+      "enabled": true
+    },
+    "run_as": {
+      "user_name": "a120446@amerisourcebergen.com"
+    },
+    "performance_target": "STANDARD"
+  }
+}

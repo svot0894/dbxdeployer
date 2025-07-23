@@ -1,7 +1,11 @@
 import dataclasses
 from typing import List, Dict, Any
+import structlog
+import logging
 
 from config.TrackingTable import TrackingTable
+
+logger = structlog.get_logger(__name__)
 
 @dataclasses.dataclass
 class DeployConfig:
@@ -9,6 +13,7 @@ class DeployConfig:
     root_folder: str | None = None
     dry_run: bool = False
     deployment_order: List[str] = dataclasses.field(default_factory=list)
+    log_level: int = logging.INFO
     
     # tracking table variables
     tracking_table: TrackingTable | None = dataclasses.field(
@@ -26,10 +31,15 @@ class DeployConfig:
     api_configs: Dict[str, dict] = dataclasses.field(default_factory=dict)
 
     # jinja variables
-    vars: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    vars: dict = dataclasses.field(default_factory=dict)
 
     @classmethod
-    def factory(cls, tracking_table: str, **kwargs):
+    def factory(
+        cls,
+        tracking_table: str,
+        log_level: int = logging.INFO,
+        **kwargs
+    ):
 
         tracking_table = TrackingTable.from_str(
             table_str=tracking_table
@@ -37,6 +47,7 @@ class DeployConfig:
 
         return cls(
             tracking_table=tracking_table,
+            log_level=log_level,
             **kwargs
         )
 
@@ -52,3 +63,7 @@ class DeployConfig:
         }
 
         return {k: v for k, v in session_kwargs.items() if v is not None}
+
+    def log_details(self):
+        logger.info("Using root folder", root_folder=str(self.root_folder))
+        logger.info("Using variables", vars=self.vars)
