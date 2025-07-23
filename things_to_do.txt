@@ -1,8 +1,0 @@
-- include permissions deployment + create the job to implement permissions
-- requests throws an ssl verify error without verify=false
-- what about any other adhoc sql queries? sometimes in snowflake we have backup scripts for example
-- should api-configs.yml be part of the module???
-
-ISSUES:
--> create job manually in DEV -> run deployment in DEV -> object is duplicated.
-    -> perhaps no deployments to DEV, only to higher environments like we do in Snowflake.

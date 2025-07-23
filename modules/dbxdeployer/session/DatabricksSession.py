@@ -209,6 +209,11 @@ class DatabricksSession:
             if script_object not in max_versions or max_version > max_versions[script_object]:
                 max_versions[script_object] = max_version
         
+        self.logger.info(
+            f"Max applied '{script_type}' script version per object %(max_versions)s"
+            % {"max_versions": max_versions}
+        )
+        
         return max_versions
 
     def apply_api_script(
