@@ -2,6 +2,7 @@ import hashlib
 import time
 import structlog
 import requests
+from utils.format_endpoint import format_endpoint
 from session.script import SqlScript, ApiConfigs
 from config.TrackingTable import TrackingTable
 
@@ -240,19 +241,28 @@ class DatabricksSession:
         endpoint = api_details.get("endpoint")
         method = api_details.get("method")
         requires_body = api_details.get("requires_body", False)
+        params = api_details.get("params", None)
+
+        # in case endpoint template contains variables that need to be replaced
+        endpoint, script_content = format_endpoint(endpoint, script_content)
 
         url = f"{self.workspace_url}{endpoint}"
 
         if len(script_content) > 0:
             start = time.time()
             try:
-                if method == "POST":
-                    response = requests.post(url, headers=self.headers, data=script_content if requires_body else None, verify=False)
-                    print(response)
-                elif method == "DELETE":
-                    response = requests.delete(url, headers=self.headers, verify=False)
-                elif method == "PATCH":
-                    response = requests.patch(url, headers=self.headers, data=script_content if requires_body else None, verify=False)
+                response = requests.request(
+                    method,
+                    url,
+                    headers=self.headers,
+                    data=script_content if requires_body else None,
+                    params=params,
+                    verify=False
+                )
+                
+                if response.status_code != 200:
+                    raise Exception(f"API script request failed: {response.text}")
+                    
             except Exception as e:
                     raise Exception(f"Failed to execute {script.name}") from e
             end = time.time()

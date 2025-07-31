@@ -1,3 +1,6 @@
+# if an endpoint contains a variable, eg. {id} make sure to include the id of the object as "_id" in the JSON script
+# the "_" is needed to identify what's a body parameter vs. a path parameter
+# params represent query parameters
 api-configs:
   jobs:
     create:
@@ -25,4 +28,6 @@ api-configs:
     update:
       endpoint: "/api/2.0/alerts/{id}"
       method: "PATCH"
-      requires_body: false
+      requires_body: true
+      params:
+        update_mask: "*"

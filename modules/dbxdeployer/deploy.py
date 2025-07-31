@@ -44,6 +44,9 @@ def deploy(config: DeployConfig, session: DatabricksSession):
     scripts_skipped = 0
     scripts_applied = 0
 
+    loader = jinja2.FileSystemLoader(".")
+    environment = jinja2.Environment(loader=loader)
+
     for script in all_scripts_sorted:
         script_log = logger.bind(
             a_script_name = script.name
@@ -52,8 +55,6 @@ def deploy(config: DeployConfig, session: DatabricksSession):
         )
 
         # TBD: jinja process for config.vars in scripts
-        loader = jinja2.FileSystemLoader(".")
-        environment = jinja2.Environment(loader=loader)
         posix_path = Path(script.file_path).as_posix()
         template = environment.get_template(posix_path)
         content = template.render(**config.vars)
