@@ -15,7 +15,6 @@ api-configs:
       endpoint: "/api/2.2/jobs/reset"
       method: "POST"
       requires_body: true
-
   alerts:
     create:
       endpoint: "/api/2.0/alerts"
@@ -31,3 +30,16 @@ api-configs:
       requires_body: true
       params:
         update_mask: "*"
+  dashboards:
+    create:
+      endpoint: "/api/2.0/lakeview/dashboards"
+      method: "POST"
+      requires_body: true
+    delete:
+      endpoint: "/api/2.0/lakeview/dashboards/{dashboard_id}"
+      method: "DELETE"
+      requires_body: false
+    update:
+      endpoint: "/api/2.0/lakeview/dashboards/{dashboard_id}"
+      method: "PATCH"
+      requires_body: true

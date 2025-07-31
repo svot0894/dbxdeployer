@@ -45,7 +45,11 @@ def deploy(config: DeployConfig, session: DatabricksSession):
     scripts_applied = 0
 
     loader = jinja2.FileSystemLoader(".")
-    environment = jinja2.Environment(loader=loader)
+    environment = jinja2.Environment(
+        loader=loader,
+        variable_start_string="<<",
+        variable_end_string=">>"
+    )
 
     for script in all_scripts_sorted:
         script_log = logger.bind(
