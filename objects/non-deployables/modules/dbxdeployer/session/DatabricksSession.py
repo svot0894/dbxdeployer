@@ -216,7 +216,7 @@ class DatabricksSession:
         )
         
         return max_versions
-
+    
     def apply_api_script(
             self,
             script: ApiConfigs,

@@ -75,7 +75,7 @@ def deploy(config: DeployConfig, session: DatabricksSession):
                 )
                 scripts_skipped += 1
                 continue
-
+            
             # fetch API details for specific object and operation
             api_details = config.api_configs[script.object][script.operation]
 
