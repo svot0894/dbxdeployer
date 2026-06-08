@@ -3,13 +3,13 @@ from typing import ClassVar
 
 @dataclasses.dataclass
 class TrackingTable:
-    _default_database_name: ClassVar[str] = "ABCH_CERTIO_DWH_DEV"
+    _default_database_name: ClassVar[str] = "DB_NAME"
     _default_schema_name: ClassVar[str] = "DBXDEPLOYER_SCH"
     _default_table_name: ClassVar[str] = "DBX_DEPLOYER_TRACKING_TABLE"
 
     table_name: str = "DBX_DEPLOYER_TRACKING_TABLE"
     schema_name: str = "DBXDEPLOYER_SCH"
-    database_name: str = "ABCH_CERTIO_DWH_DEV"
+    database_name: str = "DB_NAME"
 
     @property
     def fully_qualified(self) -> str:
