@@ -22,9 +22,6 @@ def deploy(config: DeployConfig, session: DatabricksSession):
         , tracking_table = config.tracking_table.fully_qualified
     )
 
-    # fetch max version per object from tracking table where type = A
-    api_scripts_max_versions = session.get_scripts_metadata("A", config.create_tracking_table, config.dry_run)
-
     # fetch  max version per object from tracking table where type = S
     sql_scripts_max_versions = session.get_scripts_metadata("S", config.create_tracking_table, config.dry_run)
 
@@ -63,26 +60,6 @@ def deploy(config: DeployConfig, session: DatabricksSession):
         template = environment.get_template(posix_path)
         content = template.render(**config.vars)
 
-        # deploy api-config scripts
-        if script.type == "A":
-            if (
-                api_scripts_max_versions.get(script.object, None) is not None
-                and sort_by_version(script.version) <= sort_by_version(api_scripts_max_versions.get(script.object, None))
-            ):
-                script_log.debug(
-                    "Script has already been applied",
-                    max_version = sort_by_version(api_scripts_max_versions.get(script.object, None))
-                )
-                scripts_skipped += 1
-                continue
-            
-            # fetch API details for specific object and operation
-            api_details = config.api_configs[script.object][script.operation]
-
-            session.apply_api_script(script, content, config.dry_run, logger, api_details)
-            
-            scripts_applied += 1
-        
         # deploy sql-scripts scripts
         if script.type == "S":
             if (

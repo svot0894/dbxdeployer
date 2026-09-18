@@ -3,7 +3,7 @@ import time
 import structlog
 import requests
 from utils.format_endpoint import format_endpoint
-from session.script import SqlScript, ApiConfigs
+from session.script import SqlScript
 from config.TrackingTable import TrackingTable
 
 class DatabricksSession:
@@ -216,87 +216,6 @@ class DatabricksSession:
         )
         
         return max_versions
-    
-    def apply_api_script(
-            self,
-            script: ApiConfigs,
-            script_content: str,
-            dry_run: bool,
-            logger: structlog.BoundLogger,
-            api_details
-        ) -> None:
-        """Function used to execute API calls."""
-        if dry_run:
-            logger.debug("Running in dry-run mode. Skipping execution.")
-            return
-        
-        logger.info("Applying API script...")
-
-        # create change-related variables
-        checksum = hashlib.sha224(script_content.encode("utf-8")).hexdigest()
-        execution_time = 0
-        status = "Success"
-
-        # get the API details
-        endpoint = api_details.get("endpoint")
-        method = api_details.get("method")
-        requires_body = api_details.get("requires_body", False)
-        params = api_details.get("params", None)
-
-        # in case endpoint template contains variables that need to be replaced
-        endpoint, script_content = format_endpoint(endpoint, script_content)
-
-        url = f"{self.workspace_url}{endpoint}"
-
-        if len(script_content) > 0:
-            start = time.time()
-            try:
-                response = requests.request(
-                    method,
-                    url,
-                    headers=self.headers,
-                    data=script_content if requires_body else None,
-                    params=params,
-                    verify=False
-                )
-                
-                if response.status_code != 200:
-                    raise Exception(f"API script request failed: {response.text}")
-                    
-            except Exception as e:
-                    raise Exception(f"Failed to execute {script.name}") from e
-            end = time.time()
-            execution_time = round(end - start)
-
-        # Log the execution in the tracking table
-        query = f"""\
-            INSERT INTO {self.tracking_table.fully_qualified} (
-                VERSION,
-                DESCRIPTION,
-                SCRIPT,
-                SCRIPT_TYPE,
-                SCRIPT_OBJECT,
-                SCRIPT_OPERATION,
-                CHECKSUM,
-                EXECUTION_TIME,
-                STATUS,
-                INSTALLED_BY,
-                INSTALLED_ON
-            ) VALUES (
-                '{getattr(script, "version", "")}',
-                '{script.description}',
-                '{script.name}',
-                '{script.type}',
-                '{script.object}',
-                '{script.operation}',
-                '{checksum}',
-                {execution_time},
-                '{status}',
-                '{self.user}',
-                CURRENT_TIMESTAMP
-            );
-        """
-        self.execute_sql(query=query, logger=logger)
 
     def apply_change_script(
             self,

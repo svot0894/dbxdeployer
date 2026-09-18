@@ -16,7 +16,7 @@ def parse_cli_args():
     parser.add_argument(
         "--config_folder",
         type=str,
-        help="Path to the folder where configs.yml and api-configs.yml files are located."
+        help="Path to the folder where configs.yml file is located."
     )
     args = parser.parse_args()
     return args
