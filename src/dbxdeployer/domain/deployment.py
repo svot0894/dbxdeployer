@@ -20,6 +20,10 @@ class Deployment:
     description: str
     file_path: Path
 
+    @property
+    def filename(self) -> str:
+        return self.file_path.name
+
     @classmethod
     def from_path(cls, file_path: Path):
         match = _DEPLOYMENT_PATTERN.match(file_path.name)
