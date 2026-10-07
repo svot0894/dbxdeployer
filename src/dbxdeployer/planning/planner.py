@@ -12,7 +12,18 @@ def create_deployment_plan(
 
     # Check if any deployments have already been applied based on the deployment history
     history_by_id = {entry.deployment_id: entry for entry in deployment_history}
+    local_by_id = {deployment.deployment_id: deployment for deployment in deployments}
 
+    # check for IDs in history that are not in the local deployments
+    missing_deployments = list(filter(lambda id: id not in local_by_id, history_by_id))
+
+    for missing_deployment in missing_deployments:
+        history_entry = history_by_id[missing_deployment]
+        planned_deployments.append(PlannedDeployment(
+            deployment=None,
+            status=DeploymentStatus.MISSING_LOCAL_DEPLOYMENT,
+            history_entry=history_entry))
+    
     for deployment in deployments:
         history_entry = history_by_id.get(deployment.deployment_id)
 
@@ -20,7 +31,12 @@ def create_deployment_plan(
             status = DeploymentStatus.PENDING
         elif (deployment.checksum != history_entry.checksum):
             status = DeploymentStatus.CHECKSUM_MISMATCH
+
         else:
             status = DeploymentStatus.APPLIED
-        planned_deployments.append(PlannedDeployment(deployment=deployment, status=status))
+        planned_deployments.append(PlannedDeployment(
+            deployment=deployment,
+            status=status,
+            history_entry=history_entry
+        ))
     return DeploymentPlan(planned_deployments)

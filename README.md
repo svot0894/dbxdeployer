@@ -37,3 +37,35 @@ dbxdeployer supports the jinja engine for variable replacement. To use a variabl
 ---
 ### Current Limitations:
 - Each SQL script can only contain 1 SQL statement (Databricks REST API limitation).
+
+migrations/
+      │
+      ▼
+ Discovery
+      │
+      ▼
+ Deployment[]
+      │
+      ├──────────────┐
+      ▼              │
+   Planner      DeploymentHistory[]
+      │              │
+      └──────┬───────┘
+             ▼
+      DeploymentPlan
+             │
+             ▼
+         Validator
+             │
+      ┌──────┴──────┐
+      ▼             ▼
+ Validation OK   Validation Issues
+      │
+      ▼
+       Apply (future)
+      │
+      ▼
+ Databricks SQL Warehouse
+      │
+      ▼
+ Deployment History Table
