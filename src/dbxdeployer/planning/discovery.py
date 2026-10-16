@@ -2,7 +2,6 @@
 # load deployment files
 # parse deployment files
 # detect duplicate deployments IDs
-# detect gaps in deployment versions
 # sort by version
 # return ordered deployments list
 
@@ -20,14 +19,13 @@ def discover_deployments(migrations_dir: Path) -> list[Deployment]:
         raise FileNotFoundError(f"Migrations directory not found: {migrations_dir}")
 
     for file_path in migrations_dir.rglob("*.sql"):
-        if file_path.is_file():
-            try:
-                deployment = Deployment.from_path(file_path)
-                all_deployments.append(deployment)
-            except ValueError as e:
-                raise ValueError(
-                    f"Invalid deployment file discovered: {file_path.name}"
-                ) from e
+        try:
+            deployment = Deployment.from_path(file_path)
+            all_deployments.append(deployment)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid deployment file discovered: {file_path.name}"
+            ) from e
 
     # Detect duplicate deployment IDs
     deployment_ids = [d.deployment_id for d in all_deployments]
@@ -41,20 +39,5 @@ def discover_deployments(migrations_dir: Path) -> list[Deployment]:
 
     # Sort deployments by version
     all_deployments.sort(key=lambda x: x.version)
-
-    # detect gaps in deployment versions
-    versions = [d.version for d in all_deployments]
-    if versions:
-        expected_versions = set(range(min(versions), max(versions) + 1))
-        missing_versions = expected_versions - set(versions)
-
-        missing_deployments = [
-            f"V{version:06}"
-            for version in sorted(missing_versions)
-        ]
-        if missing_versions:
-            raise ValueError(
-                f"Missing deployment versions: {', '.join(missing_deployments)}"
-            )
 
     return all_deployments

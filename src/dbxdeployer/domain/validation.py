@@ -1,18 +1,13 @@
-from enum import Enum
+# Validator tells us whether a deployment plan is safe to execute, and if not, what the issues are.
 from dataclasses import dataclass
+from dbxdeployer.domain.deployment_plan import DeploymentStatus
+from dbxdeployer.domain.deployment_plan import DeploymentPlan
 
-# ValidationIssueType
-# is an enumeration that defines the types of validation issues that can occur during the validation process. It includes the following types:
-class ValidationIssueType(Enum):
-    MISSING_LOCAL_DEPLOYMENT = "MISSING_LOCAL_DEPLOYMENT"
-    OUT_OF_ORDER_HISTORY = "OUT_OF_ORDER_HISTORY"
 
-# ValidationIssue:
-# is a class that represents a validation issue. It contains information about the issue, such as its type, message, and any additional details.
 @dataclass(frozen=True)
 class ValidationIssue:
-    issue_type: ValidationIssueType
-    deployment_id: str
+    deployment_id: str | None
+    code: DeploymentStatus
     message: str
 
 # ValidationResult:
@@ -23,3 +18,21 @@ class ValidationResult:
     @property
     def is_valid(self) -> bool:
         return len(self.issues) == 0
+
+def validate_plan(plan: DeploymentPlan) -> ValidationResult:
+    issues: list[ValidationIssue] = []
+
+    for deployment in plan.planned_deployments:
+        # check for any deployments with CHECKSUM_MISMATCH or MISSING_LOCAL_DEPLOYMENT
+        if deployment.status in (DeploymentStatus.CHECKSUM_MISMATCH, DeploymentStatus.MISSING_LOCAL_DEPLOYMENT):
+            issues.append(
+                ValidationIssue(
+                    deployment_id=deployment.deployment_id,
+                    code=deployment.status,
+                    message=f"Deployment {deployment.deployment_id} has status {deployment.status}.",
+                ),
+            )
+
+    return ValidationResult(
+        issues=tuple(issues)
+    )
