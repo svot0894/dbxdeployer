@@ -22,19 +22,14 @@ def get_merged_config(logger: structlog.BoundLogger):
     config_folder = Path(args.config_folder)
 
     config_path = config_folder / args.env / "configs.yml"
-    api_config_path = config_folder / "api-configs.yml"
 
     # fetch kwargs
     config_kwargs = get_yaml_config_kwargs(
         file_path=config_path
     )
-    api_kwargs = get_yaml_config_kwargs(
-        file_path=api_config_path
-    )
 
     kwargs = {
         **{k: v for k, v in config_kwargs.items() if v is not None},
-        **{k: v for k, v in api_kwargs.items() if v is not None},
     }
 
     return DeployConfig.factory(**kwargs)

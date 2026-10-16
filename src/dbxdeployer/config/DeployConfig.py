@@ -1,5 +1,5 @@
 import dataclasses
-from typing import List, Dict, Any
+from typing import List
 import structlog
 import logging
 
@@ -26,9 +26,6 @@ class DeployConfig:
     warehouse_id: str | None = None
     user: str | None = None
     token: str | None = None
-
-    # api endpoints details
-    api_configs: Dict[str, dict] = dataclasses.field(default_factory=dict)
 
     # jinja variables
     vars: dict = dataclasses.field(default_factory=dict)

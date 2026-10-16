@@ -12,6 +12,3 @@ wheels/
 # Files / Folders to hide
 configs/*
 deployer.ipynb
-
-# Don't ignore this file
-!configs/api-configs.yml
