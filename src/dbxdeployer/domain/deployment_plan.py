@@ -28,4 +28,4 @@ class PlannedDeployment:
 
 @dataclass(frozen=True)
 class DeploymentPlan:
-    planned_deployments: list[PlannedDeployment]
+    planned_deployments: tuple[PlannedDeployment, ...]

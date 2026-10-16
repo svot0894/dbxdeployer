@@ -10,33 +10,40 @@ def create_deployment_plan(
 ) -> DeploymentPlan:
     planned_deployments = []
 
-    # Check if any deployments have already been applied based on the deployment history
-    history_by_id = {entry.deployment_id: entry for entry in deployment_history}
-    local_by_id = {deployment.deployment_id: deployment for deployment in deployments}
-
-    # check for IDs in history that are not in the local deployments
-    missing_deployments = list(filter(lambda id: id not in local_by_id, history_by_id))
-
-    for missing_deployment in missing_deployments:
-        history_entry = history_by_id[missing_deployment]
-        planned_deployments.append(PlannedDeployment(
-            deployment=None,
-            status=DeploymentStatus.MISSING_LOCAL_DEPLOYMENT,
-            history_entry=history_entry))
+    # map "deployments" to "deployment_history" by deployment_id
+    # If a deployment is found in the history, it is considered "APPLIED" if the checksums match, otherwise it is considered "CHECKSUM_MISMATCH".
+    # If a deployment is not found in the history, it is considered "PENDING".
+    # If a deployment is found in the history but not in the local deployments, it is considered "MISSING_LOCAL_DEPLOYMENT".
     
-    for deployment in deployments:
-        history_entry = history_by_id.get(deployment.deployment_id)
+    # Create a dictionary for quick lookup of deployments and history entries by deployment version
+    deployment_dict = {d.deployment_id: d for d in deployments}
+    history_dict = {h.deployment_id: h for h in deployment_history}
+    all_deployments_ids = sorted(set(deployment_dict.keys()).union(set(history_dict.keys())), key=lambda x: int(x[1:]))  # Sort by version number
 
-        if history_entry is None:
+    # Iterate through all versions and determine the status of each deployment
+    for deployment_id in all_deployments_ids:
+        deployment = deployment_dict.get(deployment_id)
+        history_entry = history_dict.get(deployment_id)
+
+        if deployment and history_entry:
+            if deployment.checksum == history_entry.checksum:
+                status = DeploymentStatus.APPLIED
+            else:
+                status = DeploymentStatus.CHECKSUM_MISMATCH
+        elif deployment and not history_entry:
             status = DeploymentStatus.PENDING
-        elif (deployment.checksum != history_entry.checksum):
-            status = DeploymentStatus.CHECKSUM_MISMATCH
-
+        elif not deployment and history_entry:
+            status = DeploymentStatus.MISSING_LOCAL_DEPLOYMENT
         else:
-            status = DeploymentStatus.APPLIED
-        planned_deployments.append(PlannedDeployment(
-            deployment=deployment,
-            status=status,
-            history_entry=history_entry
-        ))
-    return DeploymentPlan(planned_deployments)
+            raise RuntimeError(f"Unexpected state: deployment_id {deployment_id} not found in either deployments or history.")
+
+        planned_deployments.append(
+            PlannedDeployment(
+                deployment=deployment,
+                history_entry=history_entry,
+                status=status
+            )
+        )
+
+
+    return DeploymentPlan(tuple(planned_deployments))
