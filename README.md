@@ -22,10 +22,10 @@ Use the following naming convention to your created files:
 dbxdeployer supports the jinja engine for variable replacement. To use a variable in a change script, use this syntax anywhere in the script: `{{ variable1 }}`. You can pass variables by defining them in the config.yml file.
 
 ### Deployment Rules
-- A deployment script is immutable.
+- A successful deployment script is immutable.
 - A successfully applied migration is never executed automatically again.
-- A previously applied deployment whose checksum has changed blocks deployment.
-- Migrations are applied in one deterministic global order.
+- A previously successful deployment whose checksum has changed blocks deployment.
+- Migrations are applied in order.
 - A later migration cannot execute if an earlier pending migration failed.
 - At most, one deployment run may actively apply migrations for a target environment.
 - Every attempted migration has a durable execution record.
