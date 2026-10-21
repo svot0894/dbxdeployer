@@ -51,7 +51,6 @@ def test_create_deployment_plan_with_single_deployment():
     )
 
     plan = create_deployment_plan([deployments], [])
-    print(plan.planned_deployments)
 
     assert len(plan.planned_deployments) == 1
 
@@ -86,7 +85,7 @@ def test_create_deployment_plan_with_multiple_deployments():
 
     assert len(plan.planned_deployments) == 3
 
-    assert [plan.deployment.deployment_id for plan in plan.planned_deployments] == ["V000001", "V000002", "V000003"]
+    assert [plan.deployment_id for plan in plan.planned_deployments] == ["V000001", "V000002", "V000003"]
     assert all(plan.status == DeploymentStatus.PENDING for plan in plan.planned_deployments)
 
 
@@ -141,7 +140,7 @@ def test_create_deployment_plan_with_applied_deployment():
 
 
 # validate that same file produces same checksum
-def test_deployment_checksum_consistency(tmp_path):
+def test_deployment_checksum_consistency(tmp_path: Path):
     file_path = tmp_path / "V000001__first.sql"
     file_path.write_text("SELECT 1;")
 
@@ -152,7 +151,7 @@ def test_deployment_checksum_consistency(tmp_path):
 
 
 # validate that different files produce different checksums
-def test_deployment_checksum_changes_when_file_content_changes(tmp_path):
+def test_deployment_checksum_changes_when_file_content_changes(tmp_path: Path):
     file_path = tmp_path / "V000001__first.sql"
 
     file_path.write_text("SELECT 1;")

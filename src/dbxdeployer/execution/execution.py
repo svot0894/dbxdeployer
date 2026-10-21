@@ -2,10 +2,10 @@
 
 from datetime import datetime
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum
 
 
-class ExecutionStatus(StrEnum):
+class ExecutionStatus(Enum):
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"

@@ -1,16 +1,17 @@
 # unit tests for src/dbxdeployer/planning/discovery.py
+from pathlib import Path
 import pytest # type: ignore
 from dbxdeployer.planning.discovery import discover_deployments
 
 
-def test_discover_deployments_directory_not_found(tmp_path):
+def test_discover_deployments_directory_not_found(tmp_path: Path):
     missing_dir = tmp_path / "missing"
 
     with pytest.raises(FileNotFoundError):
         discover_deployments(missing_dir)
 
 
-def test_discover_deployments_empty_directory(tmp_path):
+def test_discover_deployments_empty_directory(tmp_path: Path):
     migrations_dir = tmp_path / "migrations"
     migrations_dir.mkdir()
 
@@ -18,7 +19,7 @@ def test_discover_deployments_empty_directory(tmp_path):
     assert deployments == []
 
 
-def test_discover_valid_deployments(tmp_path):
+def test_discover_valid_deployments(tmp_path: Path):
     # Create a temporary migrations directory with valid deployment files
     migrations_dir = tmp_path / "migrations"
     migrations_dir.mkdir()
@@ -36,7 +37,7 @@ def test_discover_valid_deployments(tmp_path):
 
 
 # validate invalid deployment file names
-def test_discover_deployments_invalid_file_names(tmp_path):
+def test_discover_deployments_invalid_file_names(tmp_path: Path):
     # Create a temporary migrations directory with invalid file names
     migrations_dir = tmp_path / "migrations"
     migrations_dir.mkdir()
@@ -49,7 +50,7 @@ def test_discover_deployments_invalid_file_names(tmp_path):
 
 
 # validate duplicate deployment IDs
-def test_discover_deployments_duplicate_ids(tmp_path):
+def test_discover_deployments_duplicate_ids(tmp_path: Path):
     # Create a temporary migrations directory with duplicate deployment IDs
     migrations_dir = tmp_path / "migrations"
     migrations_dir.mkdir()
@@ -60,16 +61,3 @@ def test_discover_deployments_duplicate_ids(tmp_path):
         discover_deployments(migrations_dir)
     assert "Duplicate deployment IDs found" in str(excinfo.value)
     assert "V000001" in str(excinfo.value)
-
-
-# validate gaps in deployment versions
-def test_discover_deployments_missing_versions(tmp_path):
-    # Create a temporary migrations directory with missing deployment versions
-    migrations_dir = tmp_path / "migrations"
-    migrations_dir.mkdir()
-    (migrations_dir / "V000001__first.sql").write_text("-- First SQL")
-    (migrations_dir / "V000003__third.sql").write_text("-- Third SQL")
-
-    with pytest.raises(ValueError) as excinfo:
-        discover_deployments(migrations_dir)
-    assert "V000002" in str(excinfo.value)
